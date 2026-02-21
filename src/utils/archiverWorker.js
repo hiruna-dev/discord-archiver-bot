@@ -2,6 +2,7 @@ const PriorityQueue = require('../structures/PriorityQueue');
 const fs = require('fs').promises;
 const path = require('path');
 const BinarySearchTree = require('../structures/BST');
+const Archive = require('../database/models/Archive');
 
 class ArchiverWorker {
     constructor() {
@@ -50,9 +51,25 @@ class ArchiverWorker {
             // 3. Extract sorted
             const sortedMessages = bst.getSortedMessages();
 
-            // TODO: Save to DB
+            // 4. Save to Database
+            const mapForDb = sortedMessages.map(msg => ({
+                messageId: msg.id,
+                authorId: msg.author.id,
+                authorTag: msg.author.tag,
+                content: msg.content,
+                timestamp: msg.createdAt
+            }));
 
-            await job.interaction.followUp(`Archive complete! Filtered and sorted ${sortedMessages.length} messages.`);
+            const archiveRecord = new Archive({
+                guildId: job.guildId,
+                channelId: job.channelId,
+                requestedBy: job.requestedBy,
+                messages: mapForDb
+            });
+
+            await archiveRecord.save();
+
+            await job.interaction.followUp(`Archive complete! Saved ${mapForDb.length} messages.`);
 
         } catch (error) {
             console.error('Error processing archive job:', error);
