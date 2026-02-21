@@ -46,6 +46,32 @@ class ArchiverWorker {
             this.processNext();
         }
     }
+
+    async fetchChannelMessages(channel, limit) {
+        let allMessages = [];
+        let lastId;
+        const totalToFetch = limit;
+
+        while (true) {
+            const options = { limit: 100 };
+            if (lastId) options.before = lastId;
+
+            const messages = await channel.messages.fetch(options);
+            if (messages.size === 0) break;
+
+            for (const msg of messages.values()) {
+                if (msg.content && !msg.author.bot) {
+                    allMessages.push(msg);
+                }
+                if (allMessages.length >= totalToFetch) break;
+            }
+
+            if (allMessages.length >= totalToFetch) break;
+            lastId = messages.last().id;
+        }
+
+        return allMessages;
+    }
 }
 
 module.exports = new ArchiverWorker();
