@@ -69,7 +69,27 @@ class ArchiverWorker {
 
             await archiveRecord.save();
 
-            await job.interaction.followUp(`Archive complete! Saved ${mapForDb.length} messages.`);
+            // 5. Generate JSON file for export
+            const exportData = JSON.stringify(mapForDb, null, 2);
+            const fileName = `archive_${job.channelId}_${Date.now()}.json`;
+            const filePath = path.join(__dirname, '../../', fileName);
+            await fs.writeFile(filePath, exportData);
+
+            // 6. Notify the user via DM, fallback to channel
+            const attachment = { attachment: filePath, name: fileName };
+            const successMsg = `Successfully archived ${mapForDb.length} messages from <#${job.channelId}> into the database.`;
+
+            try {
+                const user = await job.interaction.client.users.fetch(job.interaction.user.id);
+                await user.send({ content: successMsg, files: [attachment] });
+                await job.interaction.followUp(`Archive complete! I have sent you a DM with the exported JSON file.`);
+            } catch (dmError) {
+                await job.interaction.followUp({ content: `${successMsg}\n(I couldn't DM you, so here is the export file!)`, files: [attachment] });
+            }
+
+            await fs.unlink(filePath).catch(console.error);
+
+            console.log(`Job complete: Saved ${mapForDb.length} messages.`);
 
         } catch (error) {
             console.error('Error processing archive job:', error);
