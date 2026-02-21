@@ -1,4 +1,5 @@
 const { SlashCommandBuilder } = require('discord.js');
+const archiverWorker = require('../utils/archiverWorker');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -10,6 +11,22 @@ module.exports = {
                 .setRequired(false)
         ),
     async execute(interaction) {
-        await interaction.reply('Archive command registered!');
+        // Defer reply
+        await interaction.deferReply();
+
+        let limit = interaction.options.getInteger('limit') || 999999;
+
+        const job = {
+            guildId: interaction.guildId,
+            channelId: interaction.channelId,
+            limit: limit,
+            requestedBy: interaction.user.tag,
+            channel: interaction.channel,
+            interaction: interaction
+        };
+
+        archiverWorker.enqueueJob(job);
+
+        await interaction.editReply(`Added to Priority Queue with weight: ${limit}.`);
     },
 };
