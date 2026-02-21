@@ -1,6 +1,7 @@
 const PriorityQueue = require('../structures/PriorityQueue');
 const fs = require('fs').promises;
 const path = require('path');
+const BinarySearchTree = require('../structures/BST');
 
 class ArchiverWorker {
     constructor() {
@@ -40,10 +41,18 @@ class ArchiverWorker {
                 return;
             }
 
-            // TODO: Insert into BST
+            // 2. Insert into BST
+            const bst = new BinarySearchTree();
+            for (const msg of fetchedMessages) {
+                bst.insert(msg);
+            }
+
+            // 3. Extract sorted
+            const sortedMessages = bst.getSortedMessages();
+
             // TODO: Save to DB
 
-            await job.interaction.followUp(`Archive complete! Filtered ${fetchedMessages.length} messages.`);
+            await job.interaction.followUp(`Archive complete! Filtered and sorted ${sortedMessages.length} messages.`);
 
         } catch (error) {
             console.error('Error processing archive job:', error);
