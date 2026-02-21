@@ -1,8 +1,7 @@
 const { Client, GatewayIntentBits, Collection } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
-const connectDatabase = require('./database/mongoose');
-require('dotenv').config({ path: path.join(__dirname, '../.env') });
+require('dotenv').config();
 
 // Create Discord Client
 const client = new Client({
@@ -15,9 +14,6 @@ const client = new Client({
 
 // Setup command collection
 client.commands = new Collection();
-
-// Connect to Database
-connectDatabase();
 
 const commandsPath = path.join(__dirname, 'commands');
 if (!fs.existsSync(commandsPath)) {
