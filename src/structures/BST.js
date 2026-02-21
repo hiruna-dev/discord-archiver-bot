@@ -35,20 +35,6 @@ class BinarySearchTree {
             }
         }
     }
-
-    getSortedMessages() {
-        const sortedArray = [];
-        this.inOrderTraversal(this.root, sortedArray);
-        return sortedArray;
-    }
-
-    inOrderTraversal(node, array) {
-        if (node !== null) {
-            this.inOrderTraversal(node.left, array);
-            array.push(node.message);
-            this.inOrderTraversal(node.right, array);
-        }
-    }
 }
 
 module.exports = BinarySearchTree;
