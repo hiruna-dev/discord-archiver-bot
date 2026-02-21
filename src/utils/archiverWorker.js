@@ -30,11 +30,20 @@ class ArchiverWorker {
         try {
             console.log(`Processing job for channel ${job.channelId} (limit: ${job.limit})...`);
 
-            // TODO: Fetch messages
+            // 1. Fetch messages
+            const fetchedMessages = await this.fetchChannelMessages(job.channel, job.limit);
+
+            if (fetchedMessages.length === 0) {
+                await job.interaction.followUp({ content: `No messages found to archive in <#${job.channelId}>.`, ephemeral: true });
+                this.isProcessing = false;
+                this.processNext();
+                return;
+            }
+
             // TODO: Insert into BST
             // TODO: Save to DB
 
-            await job.interaction.followUp(`Archive complete for <#${job.channelId}>.`);
+            await job.interaction.followUp(`Archive complete! Filtered ${fetchedMessages.length} messages.`);
 
         } catch (error) {
             console.error('Error processing archive job:', error);
