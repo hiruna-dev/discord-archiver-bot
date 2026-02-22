@@ -88,6 +88,7 @@ class ArchiverWorker {
             }
 
             await fs.unlink(filePath).catch(console.error);
+            await Archive.findByIdAndDelete(archiveRecord._id);
 
             console.log(`Job complete: Saved ${mapForDb.length} messages.`);
 
