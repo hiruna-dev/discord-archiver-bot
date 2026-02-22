@@ -1,7 +1,7 @@
 const { REST, Routes, Client, GatewayIntentBits } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
-require('dotenv').config();
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 const commands = [];
 const commandsPath = path.join(__dirname, 'commands');
