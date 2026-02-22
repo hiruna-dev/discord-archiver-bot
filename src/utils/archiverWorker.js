@@ -33,7 +33,7 @@ class ArchiverWorker {
             console.log(`Processing job for channel ${job.channelId} (limit: ${job.limit})...`);
 
             // 1. Fetch messages
-            const fetchedMessages = await this.fetchChannelMessages(job.channel, job.limit);
+            const fetchedMessages = await this.fetchChannelMessages(job.channel, job.actualLimit, job.startDate, job.endDate);
 
             if (fetchedMessages.length === 0) {
                 await job.interaction.followUp({ content: `No messages found to archive in <#${job.channelId}>.`, ephemeral: true });
@@ -82,9 +82,9 @@ class ArchiverWorker {
             try {
                 const user = await job.interaction.client.users.fetch(job.interaction.user.id);
                 await user.send({ content: successMsg, files: [attachment] });
-                await job.interaction.followUp(`Archive complete! I have sent you a DM with the exported JSON file.`);
+                await job.interaction.followUp({ content: `Archive complete! I have sent you a DM with the exported JSON file.`, ephemeral: true });
             } catch (dmError) {
-                await job.interaction.followUp({ content: `${successMsg}\n(I couldn't DM you, so here is the export file!)`, files: [attachment] });
+                await job.interaction.followUp({ content: `${successMsg}\n(I couldn't DM you, so here is the export file!)`, files: [attachment], ephemeral: true });
             }
 
             await fs.unlink(filePath).catch(console.error);
@@ -94,7 +94,7 @@ class ArchiverWorker {
         } catch (error) {
             console.error('Error processing archive job:', error);
             try {
-                await job.interaction.followUp(`Failed to process archive job for <#${job.channelId}>.`);
+                await job.interaction.followUp({ content: `Failed to process archive job for <#${job.channelId}>.`, ephemeral: true });
             } catch (ignore) { }
         } finally {
             this.isProcessing = false;
@@ -102,12 +102,13 @@ class ArchiverWorker {
         }
     }
 
-    async fetchChannelMessages(channel, limit) {
+    async fetchChannelMessages(channel, limit, startDate, endDate) {
         let allMessages = [];
         let lastId;
+        let reachedStartDate = false;
         const totalToFetch = limit;
 
-        while (true) {
+        while (!reachedStartDate) {
             const options = { limit: 100 };
             if (lastId) options.before = lastId;
 
@@ -115,14 +116,26 @@ class ArchiverWorker {
             if (messages.size === 0) break;
 
             for (const msg of messages.values()) {
+                const msgDate = new Date(msg.createdTimestamp);
+
+                if (startDate && msgDate < startDate) {
+                    reachedStartDate = true;
+                    break;
+                }
+
+                if (endDate && msgDate > endDate) continue;
+
                 if (msg.content && !msg.author.bot) {
                     allMessages.push(msg);
                 }
-                if (allMessages.length >= totalToFetch) break;
+
+                if (allMessages.length >= totalToFetch) {
+                    reachedStartDate = true;
+                    break;
+                }
             }
 
-            if (allMessages.length >= totalToFetch) break;
-            lastId = messages.last().id;
+            if (!reachedStartDate) lastId = messages.last().id;
         }
 
         return allMessages;
