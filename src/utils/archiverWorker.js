@@ -77,14 +77,36 @@ class ArchiverWorker {
 
             // 6. Notify the user via DM, fallback to channel
             const attachment = { attachment: filePath, name: fileName };
-            const successMsg = `Successfully archived ${mapForDb.length} messages from <#${job.channelId}> into the database.`;
+            let successContent = `Successfully archived **${mapForDb.length}** messages from <#${job.channelId}>.\n\n`;
+
+            if (mapForDb.length > 0) {
+                // Ensure correct chronological order
+                const t0 = new Date(mapForDb[0].timestamp).getTime();
+                const tEnd = new Date(mapForDb[mapForDb.length - 1].timestamp).getTime();
+                const firstMsg = t0 < tEnd ? mapForDb[0] : mapForDb[mapForDb.length - 1];
+                const lastMsg = t0 < tEnd ? mapForDb[mapForDb.length - 1] : mapForDb[0];
+
+                // Use requested parameters or auto-determine from messages
+                const startMs = job.startDate ? job.startDate.getTime() : new Date(firstMsg.timestamp).getTime();
+                const endMs = job.endDate ? job.endDate.getTime() : new Date(lastMsg.timestamp).getTime();
+
+                const timeDiffDays = Math.max(1, Math.ceil((endMs - startMs) / (1000 * 60 * 60 * 24)));
+                const avgPerDay = (mapForDb.length / timeDiffDays).toFixed(2);
+
+                const formatTime = (isoString) => new Date(isoString).toISOString().replace('T', ' ').split('.')[0] + ' UTC';
+
+                successContent += `**📊 Archive Stats:**\n` +
+                    `- **Oldest Message:** ${formatTime(firstMsg.timestamp)} | Sent by **${firstMsg.authorTag}**\n` +
+                    `- **Newest Message:** ${formatTime(lastMsg.timestamp)} | Sent by **${lastMsg.authorTag}**\n` +
+                    `- **Avg Message Frequency:** ~${avgPerDay} messages/day over ${timeDiffDays} day(s)\n`;
+            }
 
             try {
                 const user = await job.interaction.client.users.fetch(job.interaction.user.id);
-                await user.send({ content: successMsg, files: [attachment] });
-                await job.interaction.followUp({ content: `Archive complete! I have sent you a DM with the exported JSON file.`, ephemeral: true });
+                await user.send({ content: successContent, files: [attachment] });
+                await job.interaction.followUp({ content: `Archive complete! I've sent you a DM with the exported JSON file and statistics.`, ephemeral: true });
             } catch (dmError) {
-                await job.interaction.followUp({ content: `${successMsg}\n(I couldn't DM you, so here is the export file!)`, files: [attachment], ephemeral: true });
+                await job.interaction.followUp({ content: `${successContent}\n*(I couldn't DM you, so here is the file directly!)*`, files: [attachment], ephemeral: true });
             }
 
             await fs.unlink(filePath).catch(console.error);
